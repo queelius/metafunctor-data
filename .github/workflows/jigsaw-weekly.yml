@@ -1,0 +1,31 @@
+name: Generate weekly jigsaw
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'                  # Monday 00:00 UTC
+  workflow_dispatch:                     # manual trigger for testing/recovery
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: tools/pyproject.toml
+      - name: Install tools
+        run: pip install -e tools/
+      - name: Generate puzzle
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
+          OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}
+          REPO_ROOT: ${{ github.workspace }}
+        run: python -m jigsaw_tools.generate_puzzle

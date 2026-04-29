@@ -28,7 +28,15 @@ def current_week_id(today: datetime.date | None = None) -> str:
 
 
 def generate_image(prompt: str, model: str, base_url: str | None) -> bytes:
-    client = OpenAI(base_url=base_url) if base_url else OpenAI()
+    if base_url:
+        client = OpenAI(base_url=base_url)
+    else:
+        # The OpenAI SDK reads OPENAI_BASE_URL from env when no base_url
+        # is passed. GitHub Actions substitutes unset vars as empty string,
+        # which the SDK then tries to use as the URL and fails. Pop the env
+        # var before constructing the client so the SDK uses its default.
+        os.environ.pop("OPENAI_BASE_URL", None)
+        client = OpenAI()
     response = client.images.generate(model=model, prompt=prompt, size="1024x1024", n=1)
     if not response.data or not response.data[0].b64_json:
         raise RuntimeError("Image API returned no b64_json")
@@ -70,7 +78,9 @@ def main() -> int:
         print(f"{week_id} already generated; exiting.")
         return 0
     prompt = pick_prompt(week_id)
-    model = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+    # Use 'or default' rather than dict-default; GitHub Actions vars that
+    # are unset evaluate to empty string in env, not missing entirely.
+    model = os.environ.get("OPENAI_IMAGE_MODEL") or "gpt-image-1"
     base_url = os.environ.get("OPENAI_BASE_URL") or None
     image_bytes = generate_image(prompt, model, base_url)
     puzzle_dir = write_puzzle(repo_root, week_id, image_bytes, prompt, model)

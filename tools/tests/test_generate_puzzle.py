@@ -9,6 +9,7 @@ from jigsaw_tools.generate_puzzle import (
     current_week_id,
     write_puzzle,
     commit_and_push,
+    build_seed_event,
     pick_grid_size,
     pick_rotation_enabled,
 )
@@ -57,6 +58,14 @@ def test_commit_and_push_invokes_git(tmp_path: Path, monkeypatch):
     assert any(call[0] == "git" and "add" in call for call in calls)
     assert any(call[0] == "git" and "commit" in call for call in calls)
     assert any(call[0] == "git" and "push" in call for call in calls)
+
+
+def test_seed_event_has_required_envelope():
+    ev = build_seed_event("2026-W21", "a quiet harbor", 8, False)
+    assert ev["op"] == "seed_puzzle"
+    assert ev["actor"] == "jigsaw-cron"
+    assert ev["ts"].endswith("Z")
+    assert ev["v"] == 1
 
 
 def test_pick_grid_size_deterministic_per_week():

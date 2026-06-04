@@ -59,15 +59,21 @@ def write_puzzle(repo_root: Path, week_id: str, image_bytes: bytes, prompt: str,
     return puzzle_dir
 
 
-def commit_and_push(repo_root: Path, puzzle_dir: Path, week_id: str, prompt: str, grid_size: int, rotation: bool) -> None:
-    body = yaml.safe_dump({
+def build_seed_event(week_id: str, prompt: str, grid_size: int, rotation: bool) -> dict:
+    return {
         "op": "seed_puzzle",
         "week": week_id,
         "prompt": prompt,
         "grid_size": grid_size,
         "rotation": rotation,
+        "actor": "jigsaw-cron",
+        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
         "v": 1,
-    })
+    }
+
+
+def commit_and_push(repo_root: Path, puzzle_dir: Path, week_id: str, prompt: str, grid_size: int, rotation: bool) -> None:
+    body = yaml.safe_dump(build_seed_event(week_id, prompt, grid_size, rotation))
     subprocess.run(["git", "add", str(puzzle_dir.relative_to(repo_root))], cwd=repo_root, check=True)
     subprocess.run([
         "git",
